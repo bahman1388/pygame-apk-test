@@ -10,6 +10,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 90
 
     steps:
       - name: Get project
@@ -33,14 +34,33 @@ jobs:
             git zip unzip autoconf libtool \
             pkg-config zlib1g-dev libncurses-dev \
             cmake libffi-dev libssl-dev \
-            automake libltdl-dev
+            automake libltdl-dev autopoint gettext
 
       - name: Install Buildozer
         run: |
-          pip install --upgrade pip
-          pip install buildozer cython
+          python -m pip install --upgrade pip
+          python -m pip install buildozer "cython==0.29.33"
 
-      - name: Check project files
+      - name: Check main file
+        run: test -f main.py
+
+      - name: Create Buildozer config
         run: |
-          ls -la
-          test -f main.py
+          buildozer init
+          sed -i 's/^title = .*/title = Animal Battle/' buildozer.spec
+          sed -i 's/^package.name = .*/package.name = animalbattle/' buildozer.spec
+          sed -i 's/^package.domain = .*/package.domain = org.tavoos/' buildozer.spec
+          sed -i 's/^requirements =.*/requirements = python3,pygame-ce/' buildozer.spec
+          sed -i 's/^#p4a.fork = kivy/p4a.fork = AnGlonchas/' buildozer.spec
+          sed -i 's/^#p4a.branch = master/p4a.branch = develop/' buildozer.spec
+          sed -i 's/^# android.accept_sdk_license = False/android.accept_sdk_license = True/' buildozer.spec
+
+      - name: Build APK
+        run: buildozer -v android debug
+
+      - name: Save APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Animal-Battle-APK
+          path: bin/*.apk
+          if-no-files-found: error
